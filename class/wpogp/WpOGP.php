@@ -50,16 +50,19 @@ class WpOGP {
 		}
 		//マークアップを返す
 		ob_start();
-		echo '
-			<meta property="fb:admins" content="'.$this->admins.'" />
-			<meta property="og:locale" content="ja_JP">
-			<meta property="og:type" content="blog">
-			<meta property="og:site_name" content="'.esc_attr(get_bloginfo('name')).'">
-			<meta property="og:description" content="'.esc_attr($desc).'">
-			<meta property="og:title" content="'.esc_attr($title).'">
-			<meta property="og:url" content="'.esc_url($url).'">
-			<meta property="og:image" content="'.esc_url($imgUrl).'">
-		';
+		$args = array(
+			'fb:admins' => $this->admins,
+			'og:locale' => 'ja_JP',
+			'og:type' => 'blog',
+			'og:site_name' => esc_attr(get_bloginfo('name')),
+			'og:description' => esc_attr($desc),
+			'og:title' => esc_attr($title),
+			'og:url' => esc_url($url),
+			'og:image' => esc_url($imgUrl)
+		);
+		foreach($args as $key => $value){
+			printf('<meta name="%1$s" content="%2$s" />'."\n", $key, $value);
+		}
 		return ob_get_clean();
 	}
 }
