@@ -10,31 +10,30 @@ class WpOGP {
 	}
 	function get(){
 		global $post;
-		//投稿ページの場合、個別の記事情報を設定
-		if (is_single() or is_page()){
-			if(have_posts()): while(have_posts()): the_post();
-				$desc = mb_substr(get_the_excerpt(), 0, $this->descSize);
-			endwhile; endif;
-			$title = get_the_title();
-			$url = get_permalink();
-		}
-		//投稿ページ以外の場合、サイト情報を設定
-		else{
-			$desc = get_bloginfo('description');
-			$title = get_bloginfo('name');
-			$url = get_bloginfo('url');
+		//サイト情報を設定
+		$desc = get_bloginfo('description');
+		$title = get_bloginfo('name');
+		$url = get_bloginfo('url');
+		//個別ページの場合、個別の記事情報を設定
+		if (is_singular()){
+			$desc = strip_tags($post->post_excerpt ? $post->post_excerpt : $post->post_content);
+			$desc = mb_substr($desc, 0, $this->descSize);
+			$title = $post->post_title;
+			$url = get_permalink($post->ID);
 		}
 		//表示画像をカスタムフィールド、アイキャッチ、本文画像の優先順位で決定
 		$imgUrl = $this->defaultImgUrl;
-		if (is_single() or is_page()){
+		if (is_singular()){
 			$eyecatch = post_custom('eyecatch');
 			if($eyecatch != ''){
 				$imgUrl = $eyecatch;
 			}
 			else
 			if (has_post_thumbnail()){
-				$image_id = get_post_thumbnail_id();
-				$image = wp_get_attachment_image_src( $image_id, 'full');
+				$image = wp_get_attachment_image_src(
+					get_post_thumbnail_id(),
+					'full'
+				);
 				$imgUrl = $image[0];
 			}
 			else
@@ -43,10 +42,10 @@ class WpOGP {
 				$imgUrl = $matchText[2];
 			}
 		}
-		//ピカサの画像の場合は画像サイズを400px以上に設定
+		//ピカサの画像の場合は画像サイズを800pxに設定
 		if(preg_match( '/\.googleusercontent\./i', $imgUrl)){
-			$imgUrl = str_replace('/s144/', '/s400/', $imgUrl);
-			$imgUrl = str_replace('/s288/', '/s400/', $imgUrl);
+			$imgUrl = str_replace('/s144/', '/s800/', $imgUrl);
+			$imgUrl = str_replace('/s288/', '/s800/', $imgUrl);
 		}
 		//マークアップを返す
 		ob_start();
