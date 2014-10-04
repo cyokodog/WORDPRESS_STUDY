@@ -1,32 +1,52 @@
 <?php
 class WpOGP {
-	function __construct($admins, $defaultImgUrl, $descSize=100) {
-		//FacebookユーザＩＤ
-		$this->admins = $admins;
-		//デフォルトの画像URL（トップページやアーカイブページで使用）
-		$this->defaultImgUrl = $defaultImgUrl;
-		//概要説明のサイズ
-		$this->descSize = $descSize;
+
+	private $defaults = array(
+		'fb:admins' => '',
+		'og:locale' => 'ja_JP',
+		'og:site_name' => '',
+		'og:image' => '',
+		'og:type' => 'blog',
+		'og:description' => '',
+		'og:title' => '',
+		'og:url' => '',
+		'defaultImage' => '',
+		'descriptionSize' => 100
+	);
+	
+	private $params;
+
+	function extend($a, $b) {
+		$r = array();
+		foreach($a as $k=>$v) {
+			$r[$k] = $v;
+		}
+		foreach($b as $k=>$v) {
+			$r[$k] = $v;
+		}
+		return $r;
 	}
-	function get(){
+
+	function __construct($args) {
 		global $post;
+		$args = $this->extend($this->defaults, $args);
 		//サイト情報を設定
-		$desc = get_bloginfo('description');
-		$title = get_bloginfo('name');
-		$url = get_bloginfo('url');
+		$args['og:site_name'] = get_bloginfo('name');
+		$args['og:description'] = get_bloginfo('description');
+		$args['og:title'] = get_bloginfo('name');
+		$args['og:url'] = get_bloginfo('url');
 		//個別ページの場合、個別の記事情報を設定
 		if (is_singular()){
-			$desc = strip_tags($post->post_excerpt ? $post->post_excerpt : $post->post_content);
-			$desc = mb_substr($desc, 0, $this->descSize);
-			$title = $post->post_title;
-			$url = get_permalink($post->ID);
+			$args['og:description'] = mb_substr(strip_tags($post->post_excerpt ? $post->post_excerpt : $post->post_content), 0, $args['descriptionSize']);
+			$args['og:title'] = $post->post_title;
+			$args['og:url'] = get_permalink($post->ID);
 		}
 		//表示画像をカスタムフィールド、アイキャッチ、本文画像の優先順位で決定
-		$imgUrl = $this->defaultImgUrl;
+		$args['og:image'] = $args['defaultImage'];
 		if (is_singular()){
 			$eyecatch = post_custom('eyecatch');
 			if($eyecatch != ''){
-				$imgUrl = $eyecatch;
+				$args['og:image'] = $eyecatch;
 			}
 			else
 			if (has_post_thumbnail()){
@@ -34,33 +54,36 @@ class WpOGP {
 					get_post_thumbnail_id(),
 					'full'
 				);
-				$imgUrl = $image[0];
+				$args['og:image'] = $image[0];
 			}
 			else
 			if ( preg_match( '/<img.*?src=(["\'])(.+?)\1.*?>/i',
 					$post->post_content, $matchText ) && !is_archive()) {
-				$imgUrl = $matchText[2];
+				$args['og:image'] = $matchText[2];
 			}
 		}
 		//ピカサの画像の場合は画像サイズを800pxに設定
-		if(preg_match( '/\.googleusercontent\./i', $imgUrl)){
-			$imgUrl = str_replace('/s144/', '/s800/', $imgUrl);
-			$imgUrl = str_replace('/s288/', '/s800/', $imgUrl);
+		if(preg_match( '/\.googleusercontent\./i', $args['og:image'])){
+			$args['og:image'] = str_replace('/s144/', '/s800/', $args['og:image']);
+			$args['og:image'] = str_replace('/s288/', '/s800/', $args['og:image']);
 		}
+		$this->params = $args;
+	}
+
+	function getMeta($args=array()){
+		global $post;
+		$args = $this->extend($this->params, $args);
+		$args['og:site_name'] = esc_attr($args['og:site_name']);
+		$args['og:description'] = esc_attr($args['og:description']);
+		$args['og:title'] = esc_attr($args['og:title']);
+		$args['og:url'] = esc_url($args['og:url']);
+		$args['og:image'] = esc_url($args['og:image']);
 		//マークアップを返す
 		ob_start();
-		$args = array(
-			'fb:admins' => $this->admins,
-			'og:locale' => 'ja_JP',
-			'og:type' => 'blog',
-			'og:site_name' => esc_attr(get_bloginfo('name')),
-			'og:description' => esc_attr($desc),
-			'og:title' => esc_attr($title),
-			'og:url' => esc_url($url),
-			'og:image' => esc_url($imgUrl)
-		);
 		foreach($args as $key => $value){
-			printf('<meta name="%1$s" content="%2$s" />'."\n", $key, $value);
+			if(strpos($key, ':')){
+				printf('<meta name="%1$s" content="%2$s" />'."\n", $key, $value);
+			}
 		}
 		return ob_get_clean();
 	}
